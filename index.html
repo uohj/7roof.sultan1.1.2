@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة حروف - نسخة سلطان النهائية</title>
+    <style>
+        :root {
+            --green-team: #2ecc71;
+            --orange-team: #e67e22;
+            --dark-green: rgba(30, 86, 49, 0.8);
+            --dark-orange: rgba(211, 115, 50, 0.8);
+        }
+
+        body {
+            margin: 0;
+            background-image: url('https://i.imgur.com/fO25loA.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+            height: 100vh; color: white; overflow: hidden;
+        }
+
+        /* شاشة الإعدادات */
+        #setup-screen {
+            position: fixed; inset: 0; background: rgba(91, 51, 145, 0.9);
+            display: flex; justify-content: center; align-items: center; z-index: 2000;
+        }
+        .setup-box {
+            background: white; padding: 40px; border-radius: 25px;
+            color: #333; text-align: center; width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .setup-box input {
+            width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #ddd;
+            border-radius: 10px; font-size: 1rem; text-align: center; box-sizing: border-box;
+        }
+        .start-btn {
+            background: #5b3391; color: white; border: none;
+            padding: 15px 40px; border-radius: 15px; cursor: pointer; font-size: 1.2rem; font-weight: bold;
+        }
+
+        /* واجهة اللعبة */
+        .top-nav {
+            width: 100%; display: flex; justify-content: space-between;
+            align-items: center; padding: 15px 40px; box-sizing: border-box; z-index: 100;
+            background: rgba(0,0,0,0.4);
+        }
+        .btn {
+            background: white; color: #5b3391; border: none;
+            padding: 8px 15px; border-radius: 20px; font-weight: bold; cursor: pointer;
+        }
+
+        /* منطقة اللعبة - نزلناها التكة المطلوبة */
+        .main-stage {
+            position: relative; width: 650px; height: 500px;
+            display: flex; justify-content: center; align-items: center;
+            margin-top: 220px; /* التكة النهائية لعيون سلطان */
+        }
+        
+        .bg-triangles { position: absolute; inset: 0; z-index: 1; }
+        .tri { position: absolute; width: 0; height: 0; border-style: solid; }
+        .t-top { top:0; border-width: 50px 325px 0 325px; border-color: var(--dark-green) transparent transparent transparent; }
+        .t-bot { bottom:0; border-width: 0 325px 50px 325px; border-color: transparent transparent var(--dark-green) transparent; }
+        .t-left { left:0; border-width: 250px 0 250px 50px; border-color: transparent transparent transparent var(--dark-orange); }
+        .t-right { right:0; border-width: 250px 50px 250px 0; border-color: transparent var(--dark-orange) transparent transparent; }
+
+        .hex-grid { position: relative; z-index: 10; display: flex; flex-direction: column; gap: 8px; }
+        .hex-row { display: flex; gap: 10px; margin-bottom: -28px; }
+        .hex-row:nth-child(even) { transform: translateX(50px); }
+
+        .hexagon {
+            width: 90px; height: 100px; background: rgba(255, 255, 255, 0.95);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 2.2rem; font-weight: 900; color: #333; cursor: pointer; transition: 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .hexagon:hover { transform: scale(1.05); }
+        .hexagon.green-active { background: var(--green-team) !important; color: white !important; }
+        .hexagon.orange-active { background: var(--orange-team) !important; color: white !important; }
+
+        /* نافذة الاختيار */
+        #selector-popup {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 30px; border-radius: 20px; z-index: 1000;
+            text-align: center; box-shadow: 0 0 50px rgba(0,0,0,0.6); color: #333;
+        }
+        .choice-btn { border: none; padding: 15px 30px; border-radius: 12px; color: white; cursor: pointer; font-size: 1.1rem; margin: 10px; font-weight: bold; transition: 0.2s; }
+        .btn-green { background-color: var(--green-team); }
+        .btn-orange { background-color: var(--orange-team); }
+
+        .footer-credit { position: fixed; bottom: 20px; right: 30px; font-size: 1.2rem; font-weight: bold; color: white; border-right: 5px solid #f1c40f; padding-right: 12px; text-shadow: 1px 1px 5px black; }
+    </style>
+</head>
+<body>
+
+    <div id="setup-screen">
+        <div class="setup-box">
+            <h2>إعدادات المسابقة</h2>
+            <input type="text" id="gameNameInput" placeholder="اسم المسابقة">
+            <input type="text" id="teamGreenInput" placeholder="اسم الفريق الأخضر">
+            <input type="text" id="teamOrangeInput" placeholder="اسم الفريق البرتقالي">
+            <button class="start-btn" onclick="startWithConfig()">بدء اللعبة</button>
+        </div>
+    </div>
+
+    <div class="top-nav">
+        <div class="action-btns">
+            <button class="btn" onclick="location.reload()">الإعدادات</button>
+            <button class="btn" onclick="shuffleLetters()">ترتيب الحروف</button>
+            <button class="btn" onclick="resetBoard()">تصفير اللوحة</button>
+        </div>
+        <h1 id="displayGameName" style="color:#f1c40f; margin:0; font-size: 1.4rem; text-shadow: 2px 2px 4px black;"></h1>
+    </div>
+
+    <div class="main-stage">
+        <div class="bg-triangles">
+            <div class="tri t-top"></div><div class="tri t-bot"></div>
+            <div class="tri t-left"></div><div class="tri t-right"></div>
+        </div>
+        <div class="hex-grid" id="mainGrid"></div>
+    </div>
+
+    <div id="selector-popup">
+        <h3 style="margin-top:0">من فاز بالحرف؟</h3>
+        <button class="choice-btn btn-green" id="btnGreenText" onclick="confirmColor('green-active')"></button>
+        <button class="choice-btn btn-orange" id="btnOrangeText" onclick="confirmColor('orange-active')"></button>
+        <br><button style="background:none; border:none; color:#999; cursor:pointer; margin-top:10px" onclick="closePopup()">إلغاء</button>
+    </div>
+
+    <div class="footer-credit">صنع بواسطة سلطان</div>
+
+    <script>
+        const lettersArray = "أبتثجحخدذرزسشصضطظعغفقكلمنوهي".split("");
+        let currentSelectedHex = null;
+        let config = { gameName: "", greenName: "", orangeName: "" };
+        let gridState = Array(5).fill().map(() => Array(5).fill(null));
+
+        function startWithConfig() {
+            config.gameName = document.getElementById('gameNameInput').value || "مسابقة حروف";
+            config.greenName = document.getElementById('teamGreenInput').value || "الأخضر";
+            config.orangeName = document.getElementById('teamOrangeInput').value || "البرتقالي";
+            
+            document.getElementById('displayGameName').innerText = config.gameName;
+            document.getElementById('btnGreenText').innerText = config.greenName;
+            document.getElementById('btnOrangeText').innerText = config.orangeName;
+            document.getElementById('setup-screen').style.display = 'none';
+            initGame();
+        }
+
+        function initGame() {
+            const grid = document.getElementById('mainGrid');
+            grid.innerHTML = '';
+            let charIndex = 0;
+            for (let r = 0; r < 5; r++) {
+                const row = document.createElement('div');
+                row.className = 'hex-row';
+                for (let c = 0; c < 5; c++) {
+                    const hex = document.createElement('div');
+                    hex.className = 'hexagon';
+                    hex.dataset.r = r; hex.dataset.c = c;
+                    hex.innerText = lettersArray[charIndex % lettersArray.length];
+                    hex.onclick = () => { currentSelectedHex = hex; document.getElementById('selector-popup').style.display = 'block'; };
+                    row.appendChild(hex);
+                    charIndex++;
+                }
+                grid.appendChild(row);
+            }
+        }
+
+        function shuffleLetters() {
+            lettersArray.sort(() => Math.random() - 0.5);
+            const hexes = document.querySelectorAll('.hexagon');
+            hexes.forEach((hex, i) => hex.innerText = lettersArray[i % lettersArray.length]);
+        }
+
+        function closePopup() { document.getElementById('selector-popup').style.display = 'none'; }
+
+        function confirmColor(className) {
+            if (currentSelectedHex) {
+                currentSelectedHex.className = 'hexagon ' + className;
+                gridState[parseInt(currentSelectedHex.dataset.r)][parseInt(currentSelectedHex.dataset.c)] = className;
+                closePopup();
+                checkWin(className);
+            }
+        }
+
+        function checkWin(teamClass) {
+            const visited = Array(5).fill().map(() => Array(5).fill(false));
+            const queue = [];
+            if (teamClass === 'green-active') {
+                for(let c=0; c<5; c++) if(gridState[0][c] === teamClass) { queue.push([0, c]); visited[0][c] = true; }
+                while(queue.length > 0) {
+                    let [r, c] = queue.shift();
+                    if(r === 4) return announceWinner(config.greenName);
+                    getNeighbors(r, c).forEach(([nr, nc]) => {
+                        if(!visited[nr][nc] && gridState[nr][nc] === teamClass) { visited[nr][nc] = true; queue.push([nr, nc]); }
+                    });
+                }
+            } else {
+                for(let r=0; r<5; r++) if(gridState[r][0] === teamClass) { queue.push([r, 0]); visited[r][0] = true; }
+                while(queue.length > 0) {
+                    let [r, c] = queue.shift();
+                    if(c === 4) return announceWinner(config.orangeName);
+                    getNeighbors(r, c).forEach(([nr, nc]) => {
+                        if(!visited[nr][nc] && gridState[nr][nc] === teamClass) { visited[nr][nc] = true; queue.push([nr, nc]); }
+                    });
+                }
+            }
+        }
+
+        function getNeighbors(r, c) {
+            const neighbors = [];
+            const d = (r % 2 === 0) ? [[-1,0], [-1,1], [0,-1], [0,1], [1,0], [1,1]] : [[-1,-1], [-1,0], [0,-1], [0,1], [1,-1], [1,0]];
+            d.forEach(([dr, dc]) => {
+                let nr = r + dr, nc = c + dc;
+                if(nr >=0 && nr < 5 && nc >= 0 && nc < 5) neighbors.push([nr, nc]);
+            });
+            return neighbors;
+        }
+
+        function announceWinner(name) {
+            setTimeout(() => { alert("مبروك! فريق " + name + " هو الفائز!"); resetBoard(); }, 300);
+        }
+
+        function resetBoard() {
+            document.querySelectorAll('.hexagon').forEach(h => h.className = 'hexagon');
+            gridState = Array(5).fill().map(() => Array(5).fill(null));
+        }
+    </script>
+</body>
+</html>
